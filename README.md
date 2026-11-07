@@ -1,5 +1,7 @@
 # protonshell
 
+![protonshell: country pane on the left, the selected country's servers on the right](public/app.png)
+
 - [protonshell](#protonshell)
   - [Requirements](#requirements)
   - [Features](#features)
