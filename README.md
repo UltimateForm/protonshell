@@ -51,7 +51,65 @@ Install the [Proton VPN CLI](#requirements) first.
 
 ### Binary
 
-Linux binaries (amd64, arm64) are available on the [releases page](https://github.com/UltimateForm/protonshell/releases/latest).
+Linux binaries (x86_64, arm64) are available on the [releases page](https://github.com/UltimateForm/protonshell/releases/latest), as a plain executable or a `.tar.gz`.
+
+#### 1. Download
+
+Download the latest release for your architecture:
+
+```bash
+ARCH=$(uname -m)                      # x86_64 or aarch64
+[ "$ARCH" = aarch64 ] && ARCH=arm64   # release assets name it arm64
+curl -fLO "https://github.com/UltimateForm/protonshell/releases/latest/download/protonshell_Linux_${ARCH}"
+```
+
+Optionally verify it against the release checksums (replace `1.0.0` with the release you downloaded):
+
+```bash
+curl -fL "https://github.com/UltimateForm/protonshell/releases/download/v1.0.0/protonshell_1.0.0_checksums.txt" \
+  | sha256sum --check --ignore-missing
+```
+
+#### 2. Install
+
+Pick one of the two options below. To update later, repeat both steps.
+
+**Option A: bin folder.** Install it on your `PATH` under the name `protonshell`, either for your user (no root; make sure `~/.local/bin` is on your `PATH`):
+
+```bash
+install -Dm755 "protonshell_Linux_${ARCH}" ~/.local/bin/protonshell
+rm "protonshell_Linux_${ARCH}"
+```
+
+or system-wide:
+
+```bash
+sudo install -m755 "protonshell_Linux_${ARCH}" /usr/local/bin/protonshell
+rm "protonshell_Linux_${ARCH}"
+```
+
+**Option B: shell alias.** Keep the binary wherever you like, without touching your `PATH`:
+
+```bash
+mkdir -p ~/apps
+mv "protonshell_Linux_${ARCH}" ~/apps/protonshell
+chmod +x ~/apps/protonshell
+```
+
+Then alias it in `~/.bashrc` or `~/.zshrc`:
+
+```bash
+# feel free to name it anything else, and add default flags here
+alias protonshell="$HOME/apps/protonshell"
+```
+
+and reload your shell:
+
+```bash
+source ~/.bashrc  # or ~/.zshrc
+```
+
+Either way, run it with `protonshell`.
 
 ### Go
 
