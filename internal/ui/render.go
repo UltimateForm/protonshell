@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 
 	"github.com/UltimateForm/protonshell/internal/servers"
@@ -28,35 +27,29 @@ const (
 	rowFormat = rowLeft + rowLoad + rowRight
 )
 
-func (m Model) View() tea.View {
-	v := tea.NewView(m.render())
-	v.AltScreen = true
-	return v
-}
-
-func (m Model) render() string {
+func render(m Model) string {
 	if m.width == 0 {
 		return ""
 	}
 	lines := make([]string, 0, m.height)
-	lines = append(lines, m.statusLine(), m.infoLine())
-	lines = append(lines, headerStyle.Render(m.pad(fmt.Sprintf(rowFormat,
+	lines = append(lines, statusLine(m), infoLine(m))
+	lines = append(lines, headerStyle.Render(pad(m, fmt.Sprintf(rowFormat,
 		"", "SERVER", "CC", "VIA", "CITY", "LOAD", "FEATURES", "SCORE"))))
 
-	visible := m.visibleRows()
+	visible := visibleRows(m)
 	end := min(m.offset+visible, len(m.rows))
 	for i := m.offset; i < end; i++ {
-		lines = append(lines, m.row(m.rows[i], i == m.cursor))
+		lines = append(lines, row(m, m.rows[i], i == m.cursor))
 	}
 	for i := end - m.offset; i < visible; i++ {
 		lines = append(lines, "")
 	}
 
-	lines = append(lines, m.messageLine(), m.footerLine())
+	lines = append(lines, messageLine(m), footerLine(m))
 	return strings.Join(lines, "\n")
 }
 
-func (m Model) statusLine() string {
+func statusLine(m Model) string {
 	var state string
 	switch {
 	case m.busy != "":
@@ -76,20 +69,22 @@ func (m Model) statusLine() string {
 	}
 	statusLeft := titleStyle.Render("protonshell") + "  " + state
 	statusRight := lipgloss.NewStyle().Foreground(lipgloss.Darken(lipgloss.White, 0.5)).Render("v0.0.0")
+	// TODO: fix bug: padding goes negative when the terminal is narrower than
+	// statusLeft+statusRight, and strings.Repeat below panics. Clamp with max(0, padding).
 	padding := m.width - lipgloss.Width(statusLeft) - lipgloss.Width(statusRight)
-	return m.clip(statusLeft + strings.Repeat(" ", padding) + statusRight)
+	return clip(m, statusLeft+strings.Repeat(" ", padding)+statusRight)
 }
 
-func (m Model) infoLine() string {
+func infoLine(m Model) string {
 	speed := dimStyle.Render("↓ –  ↑ –")
 	if m.speedOK {
 		speed = okStyle.Render("↓ "+humanRate(m.rx)) + "  " + warnStyle.Render("↑ "+humanRate(m.tx))
 	}
 	count := fmt.Sprintf("%d/%d servers", len(m.rows), len(m.all))
-	return m.clip(speed + dimStyle.Render("  ·  "+count+"  ·  sort: "+m.sort.String()))
+	return clip(m, speed+dimStyle.Render("  ·  "+count+"  ·  sort: "+m.sort.String()))
 }
 
-func (m Model) row(s servers.Logical, selected bool) string {
+func row(m Model, s servers.Logical, selected bool) string {
 	marker := ""
 	if m.status.Connected && s.Name == m.status.Server {
 		marker = "●"
@@ -107,25 +102,25 @@ func (m Model) row(s servers.Logical, selected bool) string {
 	right := fmt.Sprintf(rowRight, features, fmt.Sprintf("%.2f", s.Score))
 
 	if selected {
-		return selectedStyle.Render(m.pad(left + load + right))
+		return selectedStyle.Render(pad(m, left+load+right))
 	}
-	return m.clip(left + loadStyle(s.Load).Render(load) + right)
+	return clip(m, left+loadStyle(s.Load).Render(load)+right)
 }
 
-func (m Model) messageLine() string {
+func messageLine(m Model) string {
 	if m.listErr != "" {
-		return m.clip(badStyle.Render(m.listErr))
+		return clip(m, badStyle.Render(m.listErr))
 	}
 	if m.message == "" {
 		return ""
 	}
 	if m.isError {
-		return m.clip(badStyle.Render(m.message))
+		return clip(m, badStyle.Render(m.message))
 	}
-	return m.clip(dimStyle.Render(m.message))
+	return clip(m, dimStyle.Render(m.message))
 }
 
-func (m Model) footerLine() string {
+func footerLine(m Model) string {
 	if m.filter.Focused() {
 		return m.filter.View()
 	}
@@ -133,7 +128,7 @@ func (m Model) footerLine() string {
 	if v := m.filter.Value(); v != "" {
 		help = "filter: " + v + " (esc clears) · " + help
 	}
-	return m.clip(dimStyle.Render(help))
+	return clip(m, dimStyle.Render(help))
 }
 
 func loadStyle(load int) lipgloss.Style {
@@ -148,12 +143,12 @@ func loadStyle(load int) lipgloss.Style {
 }
 
 // pad fits plain text to exactly the terminal width.
-func (m Model) pad(s string) string {
+func pad(m Model, s string) string {
 	return lipgloss.NewStyle().Width(m.width).MaxWidth(m.width).Render(s)
 }
 
 // clip cuts styled text at the terminal width so it never wraps.
-func (m Model) clip(s string) string {
+func clip(m Model, s string) string {
 	return lipgloss.NewStyle().MaxWidth(m.width).Render(s)
 }
 
