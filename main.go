@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	tea "github.com/charmbracelet/bubbletea"
+	tea "charm.land/bubbletea/v2"
 
 	"github.com/UltimateForm/protonshell/internal/servers"
 	"github.com/UltimateForm/protonshell/internal/ui"
@@ -16,7 +16,7 @@ func main() {
 	iface := flag.String("iface", "proton0", "VPN network interface to measure speed on")
 	flag.Parse()
 
-	p := tea.NewProgram(ui.New(*list, *iface), tea.WithAltScreen())
+	p := tea.NewProgram(ui.New(*list, *iface))
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)

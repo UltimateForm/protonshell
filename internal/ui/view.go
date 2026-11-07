@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
 
 	"github.com/UltimateForm/protonshell/internal/servers"
 )
@@ -27,7 +28,13 @@ const (
 	rowFormat = rowLeft + rowLoad + rowRight
 )
 
-func (m Model) View() string {
+func (m Model) View() tea.View {
+	v := tea.NewView(m.render())
+	v.AltScreen = true
+	return v
+}
+
+func (m Model) render() string {
 	if m.width == 0 {
 		return ""
 	}
@@ -67,7 +74,10 @@ func (m Model) statusLine() string {
 	default:
 		state = badStyle.Render("○ Disconnected")
 	}
-	return m.clip(titleStyle.Render("protonshell") + "  " + state)
+	statusLeft := titleStyle.Render("protonshell") + "  " + state
+	statusRight := lipgloss.NewStyle().Foreground(lipgloss.Darken(lipgloss.White, 0.5)).Render("v0.0.0")
+	padding := m.width - lipgloss.Width(statusLeft) - lipgloss.Width(statusRight)
+	return m.clip(statusLeft + strings.Repeat(" ", padding) + statusRight)
 }
 
 func (m Model) infoLine() string {

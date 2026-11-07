@@ -70,6 +70,7 @@ func DefaultPath() string {
 	if err != nil {
 		return "serverlist.json"
 	}
+	// ie ~/.cache/Proton/VPN/serverlist.json
 	return filepath.Join(dir, "Proton", "VPN", "serverlist.json")
 }
 
