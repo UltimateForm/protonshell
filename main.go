@@ -1,23 +1,19 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"os"
 
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/UltimateForm/protonshell/internal/servers"
-	"github.com/UltimateForm/protonshell/internal/ui"
+	"github.com/UltimateForm/protonshell/cmd"
 )
 
-func main() {
-	list := flag.String("list", servers.DefaultPath(), "path to the Proton VPN server list cache")
-	iface := flag.String("iface", "proton0", "VPN network interface to measure speed on")
-	flag.Parse()
+// version is set at release time by GoReleaser's default
+// https://goreleaser.com/customization/builds/builders/go/#options
+// -ldflags "-X main.version={{.Version}}"; it is empty in other builds.
+var version string
 
-	p := tea.NewProgram(ui.New(*list, *iface))
-	if _, err := p.Run(); err != nil {
+func main() {
+	if err := cmd.Launch(os.Args[1:], version); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}

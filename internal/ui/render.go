@@ -4,36 +4,40 @@ import (
 	"fmt"
 	"strings"
 
-	"charm.land/lipgloss/v2"
-
-	"github.com/UltimateForm/protonshell/internal/servers"
+	lp "charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 var (
-	titleStyle    = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("13"))
-	dimStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("8"))
-	okStyle       = lipgloss.NewStyle().Foreground(lipgloss.Color("10"))
-	warnStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("11"))
-	badStyle      = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))
-	headerStyle   = lipgloss.NewStyle().Bold(true).Reverse(true)
-	selectedStyle = lipgloss.NewStyle().Reverse(true)
+	titleStyle    = lp.NewStyle().Bold(true).Foreground(lp.Color("13"))
+	dimStyle      = lp.NewStyle().Foreground(lp.Color("8"))
+	okStyle       = lp.NewStyle().Foreground(lp.Color("10"))
+	warnStyle     = lp.NewStyle().Foreground(lp.Color("11"))
+	badStyle      = lp.NewStyle().Foreground(lp.Color("9"))
+	headerStyle   = lp.NewStyle().Bold(true).Reverse(true)
+	selectedStyle = lp.NewStyle().Reverse(true)
 	// unfocusedStyle marks the cursor row of the pane without focus.
-	unfocusedStyle = lipgloss.NewStyle().Background(lipgloss.Color("8"))
+	unfocusedStyle = lp.NewStyle().Background(lp.Color("8"))
 )
 
-// A server row is formatted in three parts so the load cell can be coloured
-// alone. There is no country column: the pane shows one country.
+// A server row is formatted in parts so the index and load cells can be
+// styled alone. There is no country column: the pane shows one country.
 const (
-	rowLeft   = "%-2s%-14s %-4s %-22s "
+	rowMarker = "%-2s"
+	rowIndex  = "%4s " // 1-based position in the pane, no heading
+	rowLeft   = "%-14s %-4s %-22s "
 	rowLoad   = "%5s"
 	rowRight  = "  %-11s %6s"
-	rowFormat = rowLeft + rowLoad + rowRight
+	rowFormat = rowMarker + rowIndex + rowLeft + rowLoad + rowRight
 )
 
+// A country row is formatted in parts so the index cell can be styled alone.
 const (
-	countryFormat = "%-2s%-3s %7s  %5s  %4s"
+	countryIndex  = "%3s " // 1-based position in the pane, no heading
+	countryRest   = "%-3s %7s  %5s  %4s"
+	countryFormat = countryIndex + countryRest
 	// countryPaneWidth fits countryFormat plus a trailing space.
-	countryPaneWidth = 27
+	countryPaneWidth = 29
 	paneSeparator    = " "
 )
 
@@ -41,8 +45,8 @@ func render(m Model) string {
 	if m.width == 0 {
 		return ""
 	}
-	// TODO: responsive layout: the panes are fixed-width (27 + 1 + 70 cols). Below
-	// ~98 cols the server pane is cut off on the right; consider dropping columns
+	// TODO: responsive layout: the panes are fixed-width (29 + 1 + 75 cols). Below
+	// ~105 cols the server pane is cut off on the right; consider dropping columns
 	// (FEATURES, VIA, CITY) or stacking the panes on narrow terminals.
 	rightWidth := max(1, m.width-countryPaneWidth-len(paneSeparator))
 
@@ -51,7 +55,7 @@ func render(m Model) string {
 	lines = append(lines, clip(m,
 		headerStyle.Render(fit(countryPaneWidth, fmt.Sprintf(countryFormat, "", "CC", "SERVERS", "COST", "LOAD")))+
 			paneSeparator+
-			headerStyle.Render(fit(rightWidth, fmt.Sprintf(rowFormat, "", "SERVER", "VIA", "CITY", "LOAD", "FEATURES", "COST")))))
+			headerStyle.Render(fit(rightWidth, fmt.Sprintf(rowFormat, "", "", "SERVER", "VIA", "CITY", "LOAD", "FEATURES", "COST")))))
 
 	for i := range visibleRows(m) {
 		left := countryCell(m, m.countryOffset+i)
@@ -65,10 +69,10 @@ func render(m Model) string {
 
 // cursorStyle picks how a row is drawn given whether it holds the cursor and
 // whether its pane has focus.
-func cursorStyle(m Model, p pane, atCursor bool) (lipgloss.Style, bool) {
+func cursorStyle(m Model, p pane, atCursor bool) (lp.Style, bool) {
 	switch {
 	case !atCursor:
-		return lipgloss.Style{}, false
+		return lp.Style{}, false
 	case m.focus == p:
 		return selectedStyle, true
 	default:
@@ -81,19 +85,20 @@ func countryCell(m Model, i int) string {
 		return fit(countryPaneWidth, "")
 	}
 	c := m.countries[i]
-	text := fit(countryPaneWidth, fmt.Sprintf(countryFormat, "", c.Code,
-		fmt.Sprint(c.Servers), fmt.Sprintf("%.2f", c.Best), fmt.Sprintf("%d%%", c.AvgLoad)))
+	index := fmt.Sprintf(countryIndex, fmt.Sprint(i+1))
+	rest := fmt.Sprintf(countryRest, c.Code,
+		fmt.Sprint(c.Servers), fmt.Sprintf("%.2f", c.Best), fmt.Sprintf("%d%%", c.AvgLoad))
 	if style, ok := cursorStyle(m, paneCountries, i == m.countryCursor); ok {
-		return style.Render(text)
+		return style.Render(fit(countryPaneWidth, index+rest))
 	}
-	return text
+	return fit(countryPaneWidth, dimStyle.Render(index)+rest)
 }
 
 func serverCell(m Model, i, width int) string {
 	if i >= len(m.rows) {
 		return ""
 	}
-	return row(m, m.rows[i], i == m.cursor, width)
+	return row(m, i, i == m.cursor, width)
 }
 
 func statusLine(m Model) string {
@@ -115,10 +120,10 @@ func statusLine(m Model) string {
 		state = badStyle.Render("○ Disconnected")
 	}
 	statusLeft := titleStyle.Render("protonshell") + "  " + state
-	statusRight := lipgloss.NewStyle().Foreground(lipgloss.Darken(lipgloss.White, 0.5)).Render("v0.0.0")
+	statusRight := lp.NewStyle().Foreground(lp.Darken(lp.White, 0.5)).Render(m.version)
 	// TODO: fix bug: padding goes negative when the terminal is narrower than
 	// statusLeft+statusRight, and strings.Repeat below panics. Clamp with max(0, padding).
-	padding := m.width - lipgloss.Width(statusLeft) - lipgloss.Width(statusRight)
+	padding := m.width - lp.Width(statusLeft) - lp.Width(statusRight)
 	return clip(m, statusLeft+strings.Repeat(" ", padding)+statusRight)
 }
 
@@ -127,7 +132,8 @@ func infoLine(m Model) string {
 	if m.speedOK {
 		speed = okStyle.Render("↓ "+humanRate(m.rx)) + "  " + warnStyle.Render("↑ "+humanRate(m.tx))
 	}
-	count := fmt.Sprintf("%d countries  ·  %d/%d servers", len(m.countries), len(m.matched), len(m.all))
+	// Servers in the selected country (after the filter) out of all servers.
+	count := fmt.Sprintf("%d countries  ·  %d/%d servers", len(m.countries), len(m.rows), len(m.all))
 	sort := "sort countries: " + m.countrySort.String()
 	if m.focus == paneServers {
 		sort = "sort servers: " + m.sort.String()
@@ -135,7 +141,8 @@ func infoLine(m Model) string {
 	return clip(m, speed+dimStyle.Render("  ·  "+count+"  ·  "+sort))
 }
 
-func row(m Model, s servers.Logical, atCursor bool, width int) string {
+func row(m Model, i int, atCursor bool, width int) string {
+	s := m.rows[i]
 	marker := ""
 	if m.status.Connected && s.Name == m.status.Server {
 		marker = "●"
@@ -148,14 +155,16 @@ func row(m Model, s servers.Logical, atCursor bool, width int) string {
 	if s.Tier == 0 {
 		features = strings.TrimPrefix(features+",FREE", ",")
 	}
-	left := fmt.Sprintf(rowLeft, marker, s.Name, via, truncate(s.City, 22))
+	marker = fmt.Sprintf(rowMarker, marker)
+	index := fmt.Sprintf(rowIndex, fmt.Sprint(i+1))
+	left := fmt.Sprintf(rowLeft, s.Name, via, truncate(s.City, 22))
 	load := fmt.Sprintf(rowLoad, fmt.Sprintf("%d%%", s.Load))
 	right := fmt.Sprintf(rowRight, features, fmt.Sprintf("%.2f", s.Score))
 
 	if style, ok := cursorStyle(m, paneServers, atCursor); ok {
-		return style.Render(fit(width, left+load+right))
+		return style.Render(fit(width, marker+index+left+load+right))
 	}
-	return fit(width, left+loadStyle(s.Load).Render(load)+right)
+	return fit(width, marker+dimStyle.Render(index)+left+loadStyle(s.Load).Render(load)+right)
 }
 
 func messageLine(m Model) string {
@@ -182,7 +191,7 @@ func footerLine(m Model) string {
 	return clip(m, dimStyle.Render(help))
 }
 
-func loadStyle(load int) lipgloss.Style {
+func loadStyle(load int) lp.Style {
 	switch {
 	case load < 50:
 		return okStyle
@@ -193,14 +202,15 @@ func loadStyle(load int) lipgloss.Style {
 	}
 }
 
-// fit pads or cuts text to exactly width cells.
+// fit cuts or pads text to exactly width cells. It truncates before padding
+// because lipgloss's Width wraps overlong text onto extra lines.
 func fit(width int, s string) string {
-	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render(s)
+	return lp.NewStyle().Width(width).Render(ansi.Truncate(s, width, ""))
 }
 
 // clip cuts styled text at the terminal width so it never wraps.
 func clip(m Model, s string) string {
-	return lipgloss.NewStyle().MaxWidth(m.width).Render(s)
+	return lp.NewStyle().MaxWidth(m.width).Render(s)
 }
 
 func truncate(s string, n int) string {

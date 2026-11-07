@@ -66,6 +66,7 @@ type country struct {
 type Model struct {
 	listPath string
 	iface    string
+	version  string // shown on the status line, e.g. "v1.2.0" or "dev"
 
 	all       []servers.Logical
 	matched   []servers.Logical // all, filtered
@@ -102,13 +103,14 @@ type Model struct {
 	ticks   int
 }
 
-func New(listPath, iface string) Model {
+func New(listPath, iface, version string) Model {
 	filter := textinput.New()
 	filter.Prompt = "/"
 	filter.Placeholder = "name, country code or city"
 	return Model{
 		listPath: listPath,
 		iface:    iface,
+		version:  version,
 		filter:   filter,
 		sampler:  netstat.NewSampler(iface),
 	}

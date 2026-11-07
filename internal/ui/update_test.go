@@ -14,7 +14,7 @@ func srv(name, cc string, load int, score float64) servers.Logical {
 
 // newTestModel returns a sized model holding the given servers.
 func newTestModel(list ...servers.Logical) Model {
-	m := New("", "lo")
+	m := New("", "lo", "test")
 	m, _ = update(m, tea.WindowSizeMsg{Width: 120, Height: 20})
 	m.all = list
 	rebuild(&m)
