@@ -76,6 +76,15 @@ func connect(server string) tea.Cmd {
 	}
 }
 
+func connectCountry(code string) tea.Cmd {
+	return func() tea.Msg {
+		ctx, cancel := context.WithTimeout(context.Background(), actionTimeout)
+		defer cancel()
+		out, err := vpn.ConnectCountry(ctx, code)
+		return actionMsg{out: out, err: err}
+	}
+}
+
 func disconnect() tea.Cmd {
 	return func() tea.Msg {
 		ctx, cancel := context.WithTimeout(context.Background(), actionTimeout)

@@ -25,26 +25,61 @@ const (
 	sortScore sortMode = iota
 	sortLoad
 	sortName
-	sortCountry
 	sortModes
 )
 
 func (s sortMode) String() string {
-	return [...]string{"score", "load", "name", "country"}[s]
+	return [...]string{"cost", "load", "name"}[s] // wow pretty smart
+}
+
+type countrySortMode int
+
+const (
+	countrySortBest countrySortMode = iota
+	countrySortName
+	countrySortServers
+	countrySortLoad
+	countrySortModes
+)
+
+func (s countrySortMode) String() string {
+	return [...]string{"cost", "name", "servers", "load"}[s]
+}
+
+// pane is the table that has keyboard focus.
+type pane int
+
+const (
+	paneCountries pane = iota
+	paneServers
+)
+
+// country is one row of the country pane: the matched servers that share an
+// ExitCountry.
+type country struct {
+	Code    string
+	Servers int
+	Best    float64 // lowest score; lower is better
+	AvgLoad int
 }
 
 type Model struct {
 	listPath string
 	iface    string
 
-	all  []servers.Logical
-	rows []servers.Logical // all, filtered and sorted
+	all       []servers.Logical
+	matched   []servers.Logical // all, filtered
+	countries []country         // matched, grouped by ExitCountry and sorted
+	rows      []servers.Logical // matched in the selected country, sorted
 
-	cursor, offset int
-	width, height  int
+	focus                        pane
+	countryCursor, countryOffset int
+	cursor, offset               int // server pane
+	width, height                int
 
-	filter textinput.Model
-	sort   sortMode
+	filter      textinput.Model
+	sort        sortMode
+	countrySort countrySortMode
 
 	status         vpn.Status
 	statusKnown    bool

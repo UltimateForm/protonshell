@@ -31,13 +31,18 @@ func Connect(ctx context.Context, server string) (string, error) {
 	return run(ctx, "connect", server)
 }
 
+// ConnectCountry connects to the fastest server in a country, chosen by the CLI.
+func ConnectCountry(ctx context.Context, code string) (string, error) {
+	return run(ctx, "connect", "--country", code)
+}
+
 func Disconnect(ctx context.Context) (string, error) {
 	return run(ctx, "disconnect")
 }
 
 func parseStatus(out string) Status {
 	var st Status
-	for _, line := range strings.Split(out, "\n") {
+	for line := range strings.SplitSeq(out, "\n") {
 		key, val, ok := strings.Cut(line, ":")
 		if !ok {
 			continue
